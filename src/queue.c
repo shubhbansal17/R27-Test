@@ -51,12 +51,12 @@ int message_queue_push(Message_Queue *queue, const Message *msg)
         return -1;
     }
 
-    /* Wait until there is an empty slot */
+    /* Wait until an empty slot is available */
     if (sem_wait(&queue->empty) != 0) {
         return -1;
     }
 
-    /* Protect queue access */
+    /* Lock the queue before modifying it */
     if (pthread_mutex_lock(&queue->mutex) != 0) {
         sem_post(&queue->empty);
         return -1;
@@ -70,7 +70,7 @@ int message_queue_push(Message_Queue *queue, const Message *msg)
 
     pthread_mutex_unlock(&queue->mutex);
 
-    /* One more message is available */
+    /* Signal that a new message is available */
     sem_post(&queue->full);
 
     return 0;
@@ -82,12 +82,12 @@ int message_queue_pop(Message_Queue *queue, Message *msg)
         return -1;
     }
 
-    /* Wait until there is a message */
+    /* Wait until a message is available */
     if (sem_wait(&queue->full) != 0) {
         return -1;
     }
 
-    /* Protect queue access */
+    /* Lock the queue before modifying it */
     if (pthread_mutex_lock(&queue->mutex) != 0) {
         sem_post(&queue->full);
         return -1;
@@ -101,7 +101,7 @@ int message_queue_pop(Message_Queue *queue, Message *msg)
 
     pthread_mutex_unlock(&queue->mutex);
 
-    /* One more empty slot is available */
+    /* Signal that one empty slot is now available */
     sem_post(&queue->empty);
 
     return 0;
