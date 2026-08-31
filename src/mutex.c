@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <unistd.h>
+
 #include "read.h"
 
 int rwlock_init(ReadWrite_Lock *rw)
@@ -32,13 +33,9 @@ int rwlock_init(ReadWrite_Lock *rw)
     return 0;
 }
 
-
 /* Reader Entry */
 void reader_enter(ReadWrite_Lock *lock)
 {
-    /*
-     * Block new readers while a writer is waiting or active.
-     */
     pthread_mutex_lock(&lock->writer_count);
 
     pthread_mutex_lock(&lock->reader_count);
@@ -46,7 +43,7 @@ void reader_enter(ReadWrite_Lock *lock)
     lock->reader++;
 
     /*
-     * First reader locks the shared resource,
+     * The first reader locks the shared resource,
      * preventing writers from entering.
      */
     if (lock->reader == 1) {
@@ -58,7 +55,6 @@ void reader_enter(ReadWrite_Lock *lock)
     pthread_mutex_unlock(&lock->writer_count);
 }
 
-
 /* Reader Exit */
 void reader_exit(ReadWrite_Lock *rw)
 {
@@ -67,8 +63,8 @@ void reader_exit(ReadWrite_Lock *rw)
     rw->reader--;
 
     /*
-     * Last reader releases the resource,
-     * allowing a writer to enter.
+     * The last reader releases the resource,
+     * allowing writers to enter.
      */
     if (rw->reader == 0) {
         sem_post(&rw->resource);
@@ -77,32 +73,19 @@ void reader_exit(ReadWrite_Lock *rw)
     pthread_mutex_unlock(&rw->reader_count);
 }
 
-
 /* Writer Entry */
 void writer_enter(ReadWrite_Lock *lock)
 {
-    /*
-     * Only one writer can proceed at a time.
-     */
     pthread_mutex_lock(&lock->writer_count);
-
-    /*
-     * Wait until all readers have left.
-     */
     sem_wait(&lock->resource);
 }
-
 
 /* Writer Exit */
 void writer_exit(ReadWrite_Lock *lock)
 {
-    /* Release the shared resource */
     sem_post(&lock->resource);
-
-    /* Allow another writer or readers */
     pthread_mutex_unlock(&lock->writer_count);
 }
-
 
 void rwlock_destroy(ReadWrite_Lock *rw)
 {
